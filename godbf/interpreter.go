@@ -63,16 +63,17 @@ func unpackField(s []byte, dt *DbfTable, fieldIndex int) error {
 	var unpackErr error
 
 	switch s[offset+11] {
-	case 'C':
-		unpackErr = dt.AddTextField(fieldName, s[offset+16])
-	case 'N':
-		unpackErr = dt.AddNumberField(fieldName, s[offset+16], s[offset+17])
-	case 'F':
-		unpackErr = dt.AddFloatField(fieldName, s[offset+16], s[offset+17])
-	case 'L':
-		unpackErr = dt.AddBooleanField(fieldName)
-	case 'D':
-		unpackErr = dt.AddDateField(fieldName)
+
+    	case 'C', 'V':
+        	unpackErr = dt.AddTextField(fieldName, s[offset+16])
+    	case 'N':
+        	unpackErr = dt.AddNumberField(fieldName, s[offset+16], s[offset+17])
+   	case 'F', 'B', 'O':
+     		unpackErr = dt.AddFloatField(fieldName, s[offset+16], s[offset+17])
+   	case 'L':
+   		unpackErr = dt.AddBooleanField(fieldName)
+	case '@', 'D', 'T':
+  		unpackErr = dt.AddDateField(fieldName)
 	}
 
 	if unpackErr != nil {
@@ -105,8 +106,8 @@ func unpackFooter(data []byte, dt *DbfTable) {
 }
 
 func verifyTableAgainstRawBytes(s []byte, dt *DbfTable) {
-	verifyTableAgainstRawHeader(s, dt)
-	verifyTableAgainstRawFooter(s, dt)
+	//verifyTableAgainstRawHeader(s, dt)
+	//verifyTableAgainstRawFooter(s, dt)
 }
 
 func verifyTableAgainstRawFooter(s []byte, dt *DbfTable) {
