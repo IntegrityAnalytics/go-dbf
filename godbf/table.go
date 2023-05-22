@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	yearOffset      = 1900
+	yearOffset      = 2000 // was 1900 should be conditional
 	null       byte = 0x00
 	blank      byte = 0x20
 
@@ -331,7 +331,7 @@ func (dt *DbfTable) Fields() []FieldDescriptor {
 	return dt.fields
 }
 
-// FieldNames return the names of fields in the table as a slice
+// w return the names of fields in the table as a slice
 func (dt *DbfTable) FieldNames() []string {
 	names := make([]string, 0)
 
