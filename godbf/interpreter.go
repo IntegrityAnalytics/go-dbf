@@ -54,7 +54,7 @@ func unpackFields(s []byte, dt *DbfTable) error {
 }
 
 func unpackField(s []byte, dt *DbfTable, fieldIndex int) error {
-	offset := (fieldIndex * 32) + 32
+	offset := (fieldIndex << 5) + 32  //i.e. offset := (fieldIndex * 32) + 32
 
 	fieldName := deriveFieldName(s, dt, offset)
 
@@ -62,20 +62,32 @@ func unpackField(s []byte, dt *DbfTable, fieldIndex int) error {
 
 	var unpackErr error
 
-	switch s[offset+11] {
+	typechar := s[offset+11]
 
-    	case 'C', 'V':
-        	unpackErr = dt.AddTextField(fieldName, s[offset+16])
-    	case 'N':
-        	unpackErr = dt.AddNumberField(fieldName, s[offset+16], s[offset+17])
-   	case 'F', 'B', 'O':
-     		unpackErr = dt.AddFloatField(fieldName, s[offset+16], s[offset+17])
-   	case 'L':
-   		unpackErr = dt.AddBooleanField(fieldName)
-	case '@', 'D', 'T':
-  		unpackErr = dt.AddDateField(fieldName)
+	switch typechar {
+	case 'C', 'V':
+		unpackErr = dt.AddTextField(fieldName, s[offset+16])
+	case 'N':
+		unpackErr = dt.AddNumberField(fieldName, s[offset+16], s[offset+17])
+	case 'F', 'B', 'O':
+		unpackErr = dt.AddFloatField(fieldName, s[offset+16], s[offset+17])
+	case 'L':
+		unpackErr = dt.AddBooleanField(fieldName)
+	case '@', 'D':
+		unpackErr = dt.AddDateField(fieldName)
+	case 'T':  //DateTime	459599234239	A date and time, stored as a number (see http://www.independent-software.com/dbase-dbf-dbt-file-format.html, under record reading)
+			// *ToDo* as not used in out 1000's of dbf files
+		unpackErr = dt.AddDateField(fieldName)
+	case 'I':     //  this is an integer
+		unpackErr = dt.AddNumberField(fieldName, s[offset+16], s[offset+17])
+	case 'M':  //NB M is potentially very large
+		unpackErr = dt.AddTextField(fieldName, s[offset+16])
+	case '0', 0x0:    // Non Standard -- Assume NULL --doesn't occur :(
+
+	default:
+		typechar := s[offset+11]
+		fmt.Printf("unpackField: Unrecognized type: %c, (%x hex)\n", typechar, typechar)
 	}
-
 	if unpackErr != nil {
 		return unpackErr
 	}
@@ -112,15 +124,18 @@ func verifyTableAgainstRawBytes(s []byte, dt *DbfTable) {
 
 func verifyTableAgainstRawFooter(s []byte, dt *DbfTable) {
 	if dt.eofMarker != eofMarker {
-		panic(fmt.Errorf("encoded footer is %v, but actual footer is %d", eofMarker, s[len(s)-1]))
+		//panic(fmt.Errorf("encoded footer is %v, but actual footer is %d", eofMarker, s[len(s)-1]))
 	}
 }
 
 func verifyTableAgainstRawHeader(s []byte, dt *DbfTable) {
-	expectedSize := uint32(dt.numberOfBytesInHeader) + dt.numberOfRecords*uint32(dt.lengthOfEachRecord) + 1
-	actualSize := uint32(len(s))
-	if actualSize != expectedSize {
-		panic(fmt.Errorf("encoded content is %d bytes, but header expected %d", actualSize, expectedSize))
+	expectedSize := uint32(dt.numberOfBytesInHeader) + dt.numberOfRecords*uint32(dt.lengthOfEachRecord) 
+	actualSize := uint32(len(s)) 
+	if ((actualSize != expectedSize) || (actualSize != expectedSize + 1)){ //Product dependent. only 10% of files have extra byte
+		//** Investigate data here as possible padding? **
+		// warn but don't panic
+		//panic(fmt.Errorf("encoded footer is %v, but actual footer is %d", eofMarker, s[len(s)-1]))
+		fmt.Printf("verifyTableAgainstRawHeader: encoded footer is %v, but actual footer is %d", eofMarker, s[len(s)-1])
 	}
 }
 
@@ -164,7 +179,7 @@ func New(encoding string) (table *DbfTable) {
 	dt.dataStore[28] = 0x00
 
 	// set dbase language driver
-	// Huston we have problem!
+	// Houston we have problem!
 	// There is no easy way to deal with encoding issues. At least at the moment
 	// I will try to find archaic encoding code defined by dbase standard (if there is any)
 	// for given encoding. If none match I will go with default ANSI.
