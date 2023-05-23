@@ -82,7 +82,7 @@ func writeContent(dt *DbfTable, f *os.File) error {
 	return nil
 }
 
-// Given the DbfTable return a SQL table create.
+// Given the DbfTable return a SQL table create statement.
 //
 func SQLTableDef(dt *DbfTable, file string) (string, string) {
 
@@ -170,7 +170,8 @@ func SQLTableInserts(dt *DbfTable, SQL_tbl string, f *os.File) error {
 	return err
 }
 
-
+// Standard CSV write
+//
 func SaveToCSV(dt *DbfTable, filename string) (saveErr error)  {
 
 	// Create a new CSV file
